@@ -22,14 +22,7 @@ The build and installation process is defined in the package Makefile. The packa
 
 ## Building the Package
 
-To build this package and create an installable `.ipk` file, follow the [C Package Example guide in the new Onion Documentation](https://documentation.onioniot.com/guides/packages/c-package-example). 
-
-The guide provides step-by-step instructions on:
-1. Setting up a Docker-based OpenWRT build environment 
-1. Compiling the package
-1. Transferring the compiled package binary to your Omega device
-1. Installing the package using the OPKG package manager
-1. Running the program
+To build this package and create an installable `.ipk` file, follow the Docker setup instructions [here](DOCKER_SETUP.md).
 
 ## Usage
 
