@@ -6,10 +6,14 @@ This package contains a GPS monitoring tool designed for the Omega2 device. It c
 
 ## Features
 
-- Real-time GPS data monitoring
-- JSON parsing of GPS information from ubus
-- Clean, formatted display with timestamps
-- Graceful exit handling (Ctrl+C)
+- **gps-monitor**: Real-time GPS data monitoring with interactive display
+  - JSON parsing of GPS information from ubus
+  - Clean, formatted display with timestamps
+  - Graceful exit handling (Ctrl+C)
+- **gps-logger**: Background daemon for logging GPS coordinates to CSV
+  - Configurable logging intervals (default: 30 seconds)
+  - CSV output with timestamp, coordinates, speed, elevation, and course
+  - Can run as a daemon in the background
 
 ## Package Makefile
 
@@ -26,7 +30,9 @@ To build this package and create an installable `.ipk` file, follow the Docker s
 
 ## Usage
 
-Once installed, you can run the program by simply typing:
+### GPS Monitor (Interactive Display)
+
+Once installed, you can run the interactive monitor by typing:
 
 ```bash
 gps-monitor
@@ -39,6 +45,36 @@ The program will:
 - Display a timestamp for each update
 
 Press `Ctrl+C` to exit the program gracefully.
+
+### GPS Logger (CSV Logging Daemon)
+
+To log GPS coordinates to a CSV file:
+
+```bash
+# Log every 30 seconds to /tmp/gps-log.csv (default)
+gps-logger
+
+# Log every 60 seconds to a custom file
+gps-logger -i 60 -o /tmp/my-gps-data.csv
+
+# Run as background daemon with 10-second interval
+gps-logger -d -i 10
+```
+
+**Options:**
+- `-i, --interval <seconds>`: Logging interval in seconds (default: 30)
+- `-o, --output <file>`: Output CSV file path (default: `/tmp/gps-log.csv`)
+- `-d, --daemon`: Run as daemon in background
+- `-h, --help`: Show help message
+
+**CSV Output Format:**
+```
+timestamp,latitude,longitude,speed,elevation,course,age
+2025-11-29 14:30:00,37.774929,-122.419418,0.5,10.2,180.0,1
+2025-11-29 14:30:30,37.774935,-122.419420,0.3,10.5,182.5,2
+```
+
+Press `Ctrl+C` to stop the logger (when not running as daemon).
 
 ## Dependencies
 

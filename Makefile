@@ -29,6 +29,7 @@ endef
 define Package/gps-monitor/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gps-monitor $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/gps-logger $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,gps-monitor))
