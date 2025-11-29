@@ -1,11 +1,27 @@
-all: gps-monitor gps-logger
+# Source files
+SRCS = gps-monitor.c gps.c display.c logger.c
+OBJS = $(SRCS:.c=.o)
 
-gps-monitor: gps-monitor.c
-	$(CC) $(CFLAGS) -o gps-monitor gps-monitor.c $(LDFLAGS) -lubus -lubox -lblobmsg_json -lncurses
+# Target binary
+TARGET = gps-monitor
 
-gps-logger: gps-logger.c
-	$(CC) $(CFLAGS) -o gps-logger gps-logger.c $(LDFLAGS) -lubus -lubox -lblobmsg_json
+# Libraries
+LIBS = -lubus -lubox -lblobmsg_json -lncurses
+
+# Build target
+$(TARGET): $(OBJS)
+	$(CC) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+
+# Compile source files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Dependencies
+gps-monitor.o: gps-monitor.c common.h gps.h display.h logger.h
+gps.o: gps.c gps.h common.h
+display.o: display.c display.h gps.h common.h
+logger.o: logger.c logger.h gps.h common.h
 
 clean:
-	rm -f gps-monitor gps-logger
+	rm -f $(TARGET) $(OBJS)
 

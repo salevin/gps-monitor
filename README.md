@@ -6,14 +6,14 @@ This package contains a GPS monitoring tool designed for the Omega2 device. It c
 
 ## Features
 
-- **gps-monitor**: Real-time GPS data monitoring with interactive display
+- **Interactive Display Mode** (default): Real-time GPS data monitoring
   - JSON parsing of GPS information from ubus
   - Clean, formatted display with timestamps
   - Graceful exit handling (Ctrl+C)
-- **gps-logger**: Background daemon for logging GPS coordinates to CSV
+- **Logging Mode** (with `-l` flag): Log GPS coordinates to CSV
   - Configurable logging intervals (default: 30 seconds)
   - CSV output with timestamp, coordinates, speed, elevation, and course
-  - Can run as a daemon in the background
+  - Can run as a daemon in the background with `-d` flag
 
 ## Package Makefile
 
@@ -30,9 +30,11 @@ To build this package and create an installable `.ipk` file, follow the Docker s
 
 ## Usage
 
-### GPS Monitor (Interactive Display)
+The `gps-monitor` binary supports two modes of operation:
 
-Once installed, you can run the interactive monitor by typing:
+### Interactive Display Mode (Default)
+
+Run without arguments to display GPS data in real-time:
 
 ```bash
 gps-monitor
@@ -44,27 +46,28 @@ The program will:
 - Show formatted GPS information including latitude, longitude, and other available data
 - Display a timestamp for each update
 
-Press `Ctrl+C` to exit the program gracefully.
+Press `q`, `Q`, or `ESC` to exit the program gracefully.
 
-### GPS Logger (CSV Logging Daemon)
+### Logging Mode
 
-To log GPS coordinates to a CSV file:
+Use the `-l` flag to log GPS coordinates to a CSV file:
 
 ```bash
 # Log every 30 seconds to /tmp/gps-log.csv (default)
-gps-logger
+gps-monitor -l
 
 # Log every 60 seconds to a custom file
-gps-logger -i 60 -o /tmp/my-gps-data.csv
+gps-monitor -l -i 60 -o /tmp/my-gps-data.csv
 
 # Run as background daemon with 10-second interval
-gps-logger -d -i 10
+gps-monitor -l -d -i 10
 ```
 
 **Options:**
+- `-l, --log`: Enable logging mode (log to CSV file)
 - `-i, --interval <seconds>`: Logging interval in seconds (default: 30)
 - `-o, --output <file>`: Output CSV file path (default: `/tmp/gps-log.csv`)
-- `-d, --daemon`: Run as daemon in background
+- `-d, --daemon`: Run as daemon in background (requires `-l`)
 - `-h, --help`: Show help message
 
 **CSV Output Format:**
