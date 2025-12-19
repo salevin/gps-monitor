@@ -11,11 +11,13 @@
 #include "gps.h"
 #include "display.h"
 #include "logger.h"
+#include "spi_display.h"
 
 // Global state variables
 int running = 1;
 struct ubus_context *ctx = NULL;
 int log_mode = 0;
+int spi_mode = 0;
 
 // GPS data buffers
 struct blob_buf gps_response_buf = {};
@@ -58,12 +60,14 @@ static void print_usage(const char *prog_name) {
     printf("Usage: %s [OPTIONS]\n\n", prog_name);
     printf("Options:\n");
     printf("  -l, --log                 Enable logging mode (log to CSV file)\n");
+    printf("  -s, --spi-display         Display on SPI OLED (SSD1322 256x64)\n");
     printf("  -i, --interval <seconds>  Logging interval in seconds (default: 30)\n");
     printf("  -o, --output <file>       Output CSV file path (default: /tmp/gps-log.csv)\n");
     printf("  -d, --daemon              Run as daemon in background (requires -l)\n");
     printf("  -h, --help                Show this help message\n\n");
     printf("Examples:\n");
     printf("  %s                        Display GPS data interactively\n", prog_name);
+    printf("  %s -s                     Display on SPI OLED\n", prog_name);
     printf("  %s -l                     Log every 30s to /tmp/gps-log.csv\n", prog_name);
     printf("  %s -l -i 60 -o /tmp/gps.csv  Log every 60s to custom file\n", prog_name);
     printf("  %s -l -d -i 10            Run as daemon, log every 10s\n\n", prog_name);
@@ -83,8 +87,10 @@ void signal_handler(int sig) {
         ctx = NULL;
     }
 
-    if (!log_mode) {
+    if (!log_mode && !spi_mode) {
         display_cleanup();
+    } else if (spi_mode) {
+        spi_display_cleanup();
     }
 }
 
@@ -140,6 +146,27 @@ static void run_logging_mode(int interval, const char *output_file, int daemon_m
     }
 }
 
+static void run_spi_display_mode(void) {
+    if (spi_display_init() != 0) {
+        fprintf(stderr, "Failed to initialize SPI display\n");
+        return;
+    }
+
+    printf("SPI Display mode started\n");
+    printf("Press Ctrl+C to stop\n\n");
+
+    // Main SPI display loop
+    while (running) {
+        spi_display_update();
+
+        // Update every 1 second
+        sleep(1);
+    }
+
+    spi_display_cleanup();
+    printf("\nSPI Display stopped\n");
+}
+
 int main(int argc, char **argv) {
     int interval = 30;
     int daemon_mode = 0;
@@ -147,19 +174,23 @@ int main(int argc, char **argv) {
     int opt;
 
     static struct option long_options[] = {
-        {"log",      no_argument,       0, 'l'},
-        {"interval", required_argument, 0, 'i'},
-        {"output",   required_argument, 0, 'o'},
-        {"daemon",   no_argument,       0, 'd'},
-        {"help",     no_argument,       0, 'h'},
+        {"log",         no_argument,       0, 'l'},
+        {"spi-display", no_argument,       0, 's'},
+        {"interval",    required_argument, 0, 'i'},
+        {"output",      required_argument, 0, 'o'},
+        {"daemon",      no_argument,       0, 'd'},
+        {"help",        no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
     // Parse command-line arguments
-    while ((opt = getopt_long(argc, argv, "li:o:dh", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lsi:o:dh", long_options, NULL)) != -1) {
         switch (opt) {
             case 'l':
                 log_mode = 1;
+                break;
+            case 's':
+                spi_mode = 1;
                 break;
             case 'i':
                 interval = atoi(optarg);
@@ -189,6 +220,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // Validate mutually exclusive modes
+    int mode_count = log_mode + spi_mode;
+    if (mode_count > 1) {
+        fprintf(stderr, "Error: Cannot use -l/--log and -s/--spi-display together\n");
+        fprintf(stderr, "       Choose one display/logging mode\n");
+        return 1;
+    }
+
     // Set up signal handlers
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -206,6 +245,8 @@ int main(int argc, char **argv) {
     // Run appropriate mode
     if (log_mode) {
         run_logging_mode(interval, output_file, daemon_mode);
+    } else if (spi_mode) {
+        run_spi_display_mode();
     } else {
         run_display_mode();
     }

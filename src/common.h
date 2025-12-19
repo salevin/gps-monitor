@@ -8,6 +8,7 @@
 extern int running;
 extern struct ubus_context *ctx;
 extern int log_mode;
+extern int spi_mode;
 
 // GPS data buffer
 extern struct blob_buf gps_response_buf;
