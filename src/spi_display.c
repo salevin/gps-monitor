@@ -12,7 +12,7 @@
 #include "common.h"
 
 // GPIO pin configuration
-#define GPIO_DC  11    // Data/Command pin
+#define GPIO_DC  3    // Data/Command pin
 #define GPIO_RST 2     // Reset pin
 
 // SPI device
@@ -175,7 +175,8 @@ uint8_t u8x8_byte_omega2_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void
 
 int spi_display_init(void) {
     // Setup U8g2 with SSD1322 256x64 constructor using our custom callbacks
-    u8g2_Setup_ssd1322_nhd_256x64_f(&u8g2, U8G2_R0,
+    // U8G2_R1 = 90 degree rotation for portrait mode (64x256)
+    u8g2_Setup_ssd1322_nhd_256x64_f(&u8g2, U8G2_R1,
         u8x8_byte_omega2_hw_spi,
         u8x8_gpio_and_delay_omega2);
 
@@ -214,6 +215,7 @@ void spi_display_update(void) {
     char buffer[64];
     time_t now;
     struct tm *t;
+    int y_pos = 0;
 
     // Fetch GPS data
     ret = gps_fetch_data();
@@ -223,16 +225,17 @@ void spi_display_update(void) {
 
     // Check if GPS data is available
     if (ret != 0 || !gps_callback_called || !gps_response_buf.head) {
-        // Display error message
-        u8g2_SetFont(&u8g2, u8g2_font_7x13_tf);
-        int text_width = u8g2_GetStrWidth(&u8g2, "GPS Data Unavailable");
-        int x = (256 - text_width) / 2;
-        u8g2_DrawStr(&u8g2, x, 30, "GPS Data Unavailable");
-
+        // Display error message (rotated to portrait: 64x256)
         u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
-        text_width = u8g2_GetStrWidth(&u8g2, "Check GPS connection");
-        x = (256 - text_width) / 2;
-        u8g2_DrawStr(&u8g2, x, 45, "Check GPS connection");
+
+        y_pos = 120;
+        u8g2_DrawStr(&u8g2, 4, y_pos, "GPS Data");
+        y_pos += 12;
+        u8g2_DrawStr(&u8g2, 0, y_pos, "Unavailable");
+        y_pos += 18;
+        u8g2_DrawStr(&u8g2, 6, y_pos, "Check GPS");
+        y_pos += 12;
+        u8g2_DrawStr(&u8g2, 0, y_pos, "connection");
 
         u8g2_SendBuffer(&u8g2);
         return;
@@ -242,69 +245,113 @@ void spi_display_update(void) {
     now = time(NULL);
     t = localtime(&now);
 
-    // === Title bar and time (Y=8) ===
-    u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
-    u8g2_DrawStr(&u8g2, 0, 8, "GPS Monitor");
+    // Portrait layout (64 pixels wide x 256 pixels tall)
 
+    // === Title (Y=10) ===
+    y_pos = 10;
+    u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+    u8g2_DrawStr(&u8g2, 8, y_pos, "GPS Mon");
+
+    // === Time (Y=25) ===
+    y_pos = 25;
+    u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
     snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d",
              t->tm_hour, t->tm_min, t->tm_sec);
-    u8g2_DrawStr(&u8g2, 200, 8, buffer);
+    u8g2_DrawStr(&u8g2, 6, y_pos, buffer);
 
-    // Horizontal separator line (Y=10)
-    u8g2_DrawHLine(&u8g2, 0, 10, 256);
+    // Separator line
+    y_pos = 30;
+    u8g2_DrawHLine(&u8g2, 0, y_pos, 64);
 
-    // === Latitude (Y=22) ===
+    // === Latitude (Y=45, 57) ===
+    y_pos = 45;
     lat_str = gps_get_value("latitude");
     if (lat_str) {
         lat = atof(lat_str);
-        u8g2_SetFont(&u8g2, u8g2_font_7x13_tf);
-        snprintf(buffer, sizeof(buffer), "Lat: %.6f%c%c",
+        u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
+        u8g2_DrawStr(&u8g2, 0, y_pos, "Latitude");
+
+        y_pos += 12;
+        u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+        snprintf(buffer, sizeof(buffer), "%.5f%c",
                  (lat < 0 ? -lat : lat),
-                 0xB0,  // Degree symbol
-                 (lat >= 0 ? 'N' : 'S'));
-        u8g2_DrawStr(&u8g2, 0, 22, buffer);
+                 0xB0);  // Degree symbol
+        u8g2_DrawStr(&u8g2, 0, y_pos, buffer);
+
+        y_pos += 12;
+        snprintf(buffer, sizeof(buffer), "%c", (lat >= 0 ? 'N' : 'S'));
+        u8g2_DrawStr(&u8g2, 26, y_pos, buffer);
     }
 
-    // === Longitude (Y=34) ===
+    // === Longitude (Y=80, 92) ===
+    y_pos = 80;
     lon_str = gps_get_value("longitude");
     if (lon_str) {
         lon = atof(lon_str);
-        u8g2_SetFont(&u8g2, u8g2_font_7x13_tf);
-        snprintf(buffer, sizeof(buffer), "Lon: %.6f%c%c",
+        u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
+        u8g2_DrawStr(&u8g2, 0, y_pos, "Longitude");
+
+        y_pos += 12;
+        u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+        snprintf(buffer, sizeof(buffer), "%.5f%c",
                  (lon < 0 ? -lon : lon),
-                 0xB0,  // Degree symbol
-                 (lon >= 0 ? 'E' : 'W'));
-        u8g2_DrawStr(&u8g2, 0, 34, buffer);
+                 0xB0);  // Degree symbol
+        u8g2_DrawStr(&u8g2, 0, y_pos, buffer);
+
+        y_pos += 12;
+        snprintf(buffer, sizeof(buffer), "%c", (lon >= 0 ? 'E' : 'W'));
+        u8g2_DrawStr(&u8g2, 26, y_pos, buffer);
     }
 
-    // Horizontal separator line (Y=36)
-    u8g2_DrawHLine(&u8g2, 0, 36, 256);
+    // Separator line
+    y_pos = 110;
+    u8g2_DrawHLine(&u8g2, 0, y_pos, 64);
 
-    // === Speed (Y=48) ===
+    // === Speed (Y=125, 137) ===
+    y_pos = 125;
     speed_str = gps_get_value("speed");
     if (speed_str) {
         speed_ms = atof(speed_str);
-        speed_knots = speed_ms * 1.94384;  // Convert m/s to knots
-        u8g2_SetFont(&u8g2, u8g2_font_7x13_tf);
-        snprintf(buffer, sizeof(buffer), "Spd: %.1f m/s (%.1f kn)",
-                 speed_ms, speed_knots);
-        u8g2_DrawStr(&u8g2, 0, 48, buffer);
+        speed_knots = speed_ms * 1.94384;
+
+        u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
+        u8g2_DrawStr(&u8g2, 0, y_pos, "Speed");
+
+        y_pos += 12;
+        u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+        snprintf(buffer, sizeof(buffer), "%.1f m/s", speed_ms);
+        u8g2_DrawStr(&u8g2, 0, y_pos, buffer);
+
+        y_pos += 12;
+        snprintf(buffer, sizeof(buffer), "%.1f kn", speed_knots);
+        u8g2_DrawStr(&u8g2, 2, y_pos, buffer);
     }
 
-    // === Elevation (Y=60) ===
+    // === Elevation (Y=160, 172) ===
+    y_pos = 160;
     elevation_str = gps_get_value("elevation");
     if (elevation_str) {
         elevation = atof(elevation_str);
-        u8g2_SetFont(&u8g2, u8g2_font_7x13_tf);
-        snprintf(buffer, sizeof(buffer), "Elev: %.1f m", elevation);
-        u8g2_DrawStr(&u8g2, 0, 60, buffer);
+
+        u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
+        u8g2_DrawStr(&u8g2, 0, y_pos, "Elevation");
+
+        y_pos += 12;
+        u8g2_SetFont(&u8g2, u8g2_font_6x10_tf);
+        snprintf(buffer, sizeof(buffer), "%.1f m", elevation);
+        u8g2_DrawStr(&u8g2, 2, y_pos, buffer);
     }
 
-    // === Date at bottom (Y=63) ===
+    // Separator line
+    y_pos = 185;
+    u8g2_DrawHLine(&u8g2, 0, y_pos, 64);
+
+    // === Date (Y=200) ===
+    y_pos = 200;
     u8g2_SetFont(&u8g2, u8g2_font_5x7_tf);
     snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d",
              t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
-    u8g2_DrawStr(&u8g2, 190, 63, buffer);
+    u8g2_DrawStr(&u8g2, 0, y_pos, buffer);
 
     // Send buffer to display
     u8g2_SendBuffer(&u8g2);
